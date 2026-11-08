@@ -1,5 +1,5 @@
-use serde::Deserialize;
 use crate::azure::cli::run_az;
+use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -12,9 +12,7 @@ pub struct AccessToken {
     pub tenant: String,
 }
 
-pub fn get_vault_token()
-    -> Result<AccessToken, Box<dyn std::error::Error>>
-{
+pub fn get_vault_token() -> Result<AccessToken, Box<dyn std::error::Error>> {
     let output = run_az(&[
         "account",
         "get-access-token",

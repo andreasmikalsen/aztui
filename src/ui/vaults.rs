@@ -1,15 +1,12 @@
 use ratatui::{
     Frame,
-    layout::{Constraint},
+    layout::Constraint,
     widgets::{Block, Borders, Cell, Row, Table},
 };
 
 use crate::azure::keyvault::Secret;
 
-pub fn render_secrets(
-    frame: &mut Frame,
-    secrets: &[Secret],
-) {
+pub fn render_secrets(frame: &mut Frame, secrets: &[Secret]) {
     let area = frame.area();
 
     let rows = secrets.iter().map(|secret| {
@@ -28,15 +25,12 @@ pub fn render_secrets(
             Constraint::Percentage(25),
         ],
     )
-        .header(
-            Row::new(["Secret", "Status", "Value"])
-                .style(ratatui::style::Style::default().bold())
-        )
-        .block(
-            Block::default()
-                .title(" Key Vault Secrets ")
-                .borders(Borders::ALL)
-        );
+    .header(Row::new(["Secret", "Status", "Value"]).style(ratatui::style::Style::default().bold()))
+    .block(
+        Block::default()
+            .title(" Key Vault Secrets ")
+            .borders(Borders::ALL),
+    );
 
     frame.render_widget(table, area);
 }

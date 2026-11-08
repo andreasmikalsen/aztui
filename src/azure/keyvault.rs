@@ -1,5 +1,5 @@
-use serde::Deserialize;
 use crate::azure::cli::run_az;
+use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct KeyVault {
@@ -19,26 +19,15 @@ pub struct SecretValue {
     pub value: String,
 }
 
-pub fn list_vaults()
-    -> Result<Vec<KeyVault>, Box<dyn std::error::Error>>
-{
-    let output = run_az(&[
-        "keyvault",
-        "list",
-        "--output",
-        "json",
-    ])?;
+pub fn list_vaults() -> Result<Vec<KeyVault>, Box<dyn std::error::Error>> {
+    let output = run_az(&["keyvault", "list", "--output", "json"])?;
 
-    let vaults: Vec<KeyVault> =
-        serde_json::from_str(&output)?;
+    let vaults: Vec<KeyVault> = serde_json::from_str(&output)?;
 
     Ok(vaults)
 }
 
-pub fn list_secrets(
-    vault_name: &str,
-) -> Result<Vec<Secret>, Box<dyn std::error::Error>> {
-
+pub fn list_secrets(vault_name: &str) -> Result<Vec<Secret>, Box<dyn std::error::Error>> {
     let output = run_az(&[
         "keyvault",
         "secret",
@@ -49,8 +38,7 @@ pub fn list_secrets(
         "json",
     ])?;
 
-    let secrets: Vec<Secret> =
-        serde_json::from_str(&output)?;
+    let secrets: Vec<Secret> = serde_json::from_str(&output)?;
 
     Ok(secrets)
 }
@@ -59,7 +47,6 @@ pub fn get_secret(
     vault_name: &str,
     secret_name: &str,
 ) -> Result<SecretValue, Box<dyn std::error::Error>> {
-
     let output = run_az(&[
         "keyvault",
         "secret",
@@ -72,8 +59,7 @@ pub fn get_secret(
         "json",
     ])?;
 
-    let secret: SecretValue =
-        serde_json::from_str(&output)?;
+    let secret: SecretValue = serde_json::from_str(&output)?;
 
     Ok(secret)
 }
