@@ -1,4 +1,5 @@
 pub enum LoadState<T> {
+    Idle,
     Loading,
     Ready(T),
     Error(String),

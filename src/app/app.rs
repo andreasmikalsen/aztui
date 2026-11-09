@@ -1,14 +1,15 @@
-use std::sync::mpsc::{Receiver, Sender};
+use crate::app::worker::AppMessage;
+use crate::azure::account::{AzureAccount, get_account, get_account_list, set_account};
+use crate::azure::token::{get_access_token, TokenTarget};
+use crate::domain::errors::SwitchError;
+use crate::domain::load_state::LoadState;
+use crate::domain::states::{DashboardState, TokenState};
 use crate::ui;
 use crate::ui::navigation::Tab;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout};
-use crate::app::worker::AppMessage;
-use crate::azure::account::{get_account, AzureAccount, get_account_list, set_account};
-use crate::domain::errors::SwitchError;
-use crate::domain::load_state::LoadState;
-use crate::domain::states::DashboardState;
+use std::sync::mpsc::{Receiver, Sender};
 
 pub struct App {
     pub running: bool,
@@ -18,6 +19,7 @@ pub struct App {
     pub azure_account_loading: bool,
 
     pub dashboard: DashboardState,
+    pub token: TokenState,
 
     pub worker_sender: Sender<AppMessage>,
     pub worker_receiver: Receiver<AppMessage>,
@@ -41,7 +43,12 @@ impl App {
                 subscription_list_loading: false,
                 subscription_changing: false,
                 switch_error: None,
-            }
+            },
+            token: TokenState {
+                token: LoadState::Idle,
+                selected_target: 0,
+                token_fetching: false,
+            },
         };
         app.refresh_account();
         Ok(app)
@@ -83,7 +90,7 @@ impl App {
                 ui::dashboard::render(frame, areas[1], self);
             }
             Tab::Settings => frame.render_widget("Settings coming soon", areas[1]),
-            Tab::Tokens => frame.render_widget("Tokens coming soon", areas[1]),
+            Tab::Tokens => ui::tokens::render(frame, areas[1], self),
             Tab::Vaults => frame.render_widget("Key Vaults coming soon", areas[1]),
         }
     }
@@ -144,6 +151,28 @@ impl App {
         });
     }
 
+    fn fetch_access_token(&mut self) {
+        if self.token.token_fetching {
+            return;
+        }
+        let target = TokenTarget::ALL[self.token.selected_target];
+        let subscription_id = match &self.azure_account {
+            LoadState::Ready(value) => value.id.clone(),
+            _ => {
+                self.token.token = LoadState::Error(String::from("Subscription is not loaded"));
+                return;
+            }
+        };
+
+        self.token.token_fetching = true;
+        self.token.token = LoadState::Loading;
+        let sender = self.worker_sender.clone();
+        std::thread::spawn(move || {
+            let result = get_access_token(target, subscription_id.as_str()).map_err(|e| e.to_string());
+            let _ = sender.send(AppMessage::TokenRequest(result));
+        });
+    }
+
     pub fn handle_key(&mut self, key: KeyEvent) {
         if self.dashboard.selector_open {
             if self.dashboard.subscription_changing {
@@ -155,17 +184,14 @@ impl App {
                 }
                 KeyCode::Char('j') => {
                     match &self.dashboard.subscription_list {
-                        LoadState::Loading => {
-                            return;
-                        }
-                        LoadState::Error(_) => {
-                            return;
-                        }
                         LoadState::Ready(list) => {
                             if list.is_empty() || self.dashboard.selected_subscription + 1 == list.len() {
                                 return;
                             }
                             self.dashboard.selected_subscription = self.dashboard.selected_subscription + 1;
+                        }
+                        _ => {
+                            return;
                         }
                     }
                 }
@@ -195,6 +221,25 @@ impl App {
                 _ => {
                     return;
                 }
+            }
+        }
+        if self.active_tab == Tab::Tokens {
+            match key.code {
+                KeyCode::Char('j') => {
+                    if self.token.selected_target + 1 < TokenTarget::ALL.len()  {
+                        self.token.selected_target = self.token.selected_target + 1;
+                    }
+                }
+                KeyCode::Char('k') => {
+                    self.token.selected_target = self.token.selected_target.saturating_sub(1);
+                }
+                KeyCode::Char('y') => {
+                    // TODO Yank token
+                }
+                KeyCode::Enter => {
+                    self.fetch_access_token();
+                }
+                _ => {}
             }
         }
         if self.active_tab == Tab::Dashboard {

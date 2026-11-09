@@ -1,11 +1,10 @@
 use crate::app::app::App;
+use crate::domain::load_state::LoadState;
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::prelude::Modifier;
 use ratatui::style::{Color, Style};
 use ratatui::widgets::{Block, Clear, List, ListState, Paragraph, Wrap};
-use log::error;
-use crate::domain::load_state::LoadState;
 
 pub fn render(frame: &mut Frame, area: Rect, app: &App) {
     let text = match &app.azure_account {
@@ -17,6 +16,9 @@ pub fn render(frame: &mut Frame, area: Rect, app: &App) {
         }
         LoadState::Loading => {
             "Loading account...".to_string()
+        }
+        LoadState::Idle => {
+            "".to_string()
         }
     };
     frame.render_widget(
@@ -89,6 +91,12 @@ pub fn render(frame: &mut Frame, area: Rect, app: &App) {
             LoadState::Loading => {
                 frame.render_widget(
                     Paragraph::new("Subscription list loading..."),
+                    list_area
+                )
+            }
+            LoadState::Idle => {
+                frame.render_widget(
+                    Paragraph::new("Subscription list idleing..."),
                     list_area
                 )
             }
